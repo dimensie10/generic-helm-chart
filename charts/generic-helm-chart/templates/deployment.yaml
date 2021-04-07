@@ -1,0 +1,103 @@
+{{- $fullName := include "generic-helm-chart.fullname" . -}}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "generic-helm-chart.fullname" . }}
+  labels:
+    {{- include "generic-helm-chart.labels" . | nindent 4 }}
+spec:
+  {{- if not .Values.autoscaling.enabled }}
+  replicas: {{ .Values.replicaCount }}
+  {{- end }}
+  selector:
+    matchLabels:
+      {{- include "generic-helm-chart.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      {{- with .Values.podAnnotations }}
+      annotations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      labels:
+        {{- include "generic-helm-chart.selectorLabels" . | nindent 8 }}
+    spec:
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      serviceAccountName: {{ include "generic-helm-chart.serviceAccountName" . }}
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      containers:
+        - name: {{ .Chart.Name }}
+          {{- with .Values.env }}
+          env:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          securityContext:
+            {{- toYaml .Values.securityContext | nindent 12 }}
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          ports:
+            - name: http
+              containerPort: {{ .Values.port }}
+              protocol: TCP
+          livenessProbe:
+            httpGet:
+              path: {{ default "/" .Values.livenessProbe.monitorPath }}
+              port: http
+              scheme: HTTP
+            initialDelaySeconds: {{ default 0 .Values.livenessProbe.initialDelaySeconds }}
+            periodSeconds: {{ default 10 .Values.livenessProbe.periodSeconds }}
+            successThreshold: {{ default 1 .Values.livenessProbe.successThreshold }}
+            timeoutSeconds: {{ default 1 .Values.livenessProbe.timeoutSeconds }}
+            failureThreshold: {{ default 3 .Values.livenessProbe.failureThreshold }}
+          readinessProbe:
+            httpGet:
+              path: {{ default "/" .Values.readinessProbe.monitorPath }}
+              port: http
+              scheme: HTTP
+            initialDelaySeconds: {{ default 0 .Values.readinessProbe.initialDelaySeconds }}
+            periodSeconds: {{ default 10 .Values.readinessProbe.periodSeconds }}
+            successThreshold: {{ default 1 .Values.readinessProbe.successThreshold }}
+            timeoutSeconds: {{ default 1 .Values.readinessProbe.timeoutSeconds }}
+            failureThreshold: {{ default 3 .Values.readinessProbe.failureThreshold }}
+          {{- if .Values.configmaps }}
+          volumeMounts:
+            {{- range $name, $entries := .Values.configmaps }}
+            {{- range $path, $files := $entries }}
+            {{- if (gt (len (keys $entries)) 1) }}
+            {{- range $filename, $contents := $files }}
+            - name: {{ $name }}-cm
+              mountPath: {{ $path }}/{{ $filename }}
+              subPath: {{ $path }}/{{ $filename }}
+            {{- end }}
+            {{- else }}
+            - name: {{ $name }}-cm
+              mountPath: {{ $path }}
+            {{- end }}
+            {{- end }}
+            {{- end }}
+          {{- end }}
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+      {{- if .Values.configmaps }}
+      volumes:
+        {{- range $name, $files := .Values.configmaps }}
+        - name: {{ $name }}-cm
+          configMap:
+            name: {{ $fullName }}-{{ $name }}
+        {{- end }}
+      {{- end }}
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
