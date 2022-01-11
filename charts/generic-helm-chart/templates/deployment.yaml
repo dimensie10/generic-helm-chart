@@ -1,17 +1,17 @@
-{{- $fullName := include "generic-helm-chart.fullname" . -}}
+{{- $fullName := include "generic-helm-charts.fullname" . -}}
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: {{ include "generic-helm-chart.fullname" . }}
+  name: {{ include "generic-helm-charts.fullname" . }}
   labels:
-    {{- include "generic-helm-chart.labels" . | nindent 4 }}
+    {{- include "generic-helm-charts.labels" . | nindent 4 }}
 spec:
   {{- if not .Values.autoscaling.enabled }}
   replicas: {{ .Values.replicaCount }}
   {{- end }}
   selector:
     matchLabels:
-      {{- include "generic-helm-chart.selectorLabels" . | nindent 6 }}
+      {{- include "generic-helm-charts.selectorLabels" . | nindent 6 }}
   template:
     metadata:
       {{- if (or .Values.podAnnotations .Values.configmaps) }}
@@ -39,13 +39,13 @@ spec:
       {{- end }}
       {{- end }}
       labels:
-        {{- include "generic-helm-chart.selectorLabels" . | nindent 8 }}
+        {{- include "generic-helm-charts.selectorLabels" . | nindent 8 }}
     spec:
       {{- with .Values.imagePullSecrets }}
       imagePullSecrets:
         {{- toYaml . | nindent 8 }}
       {{- end }}
-      serviceAccountName: {{ include "generic-helm-chart.serviceAccountName" . }}
+      serviceAccountName: {{ include "generic-helm-charts.serviceAccountName" . }}
       securityContext:
         {{- toYaml .Values.podSecurityContext | nindent 8 }}
       containers:
@@ -77,7 +77,7 @@ spec:
           {{- end }}
           {{- end }}
           {{- else }}
-          {{- $secret_name := include "generic-helm-chart.fullname" . }}
+          {{- $secret_name := include "generic-helm-charts.fullname" . }}
           {{- range $name, $value := .Values.env.secret }}
           {{- if not ( empty $value) }}
             - name: {{ $name | quote }}

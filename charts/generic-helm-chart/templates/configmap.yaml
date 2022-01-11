@@ -1,4 +1,4 @@
-{{- $fullName := include "generic-helm-chart.fullname" . -}}
+{{- $fullName := include "generic-helm-charts.fullname" . -}}
 {{- range $name, $entries := (omit .Values.configmaps "nochecksum") }}
 apiVersion: v1
 kind: ConfigMap
