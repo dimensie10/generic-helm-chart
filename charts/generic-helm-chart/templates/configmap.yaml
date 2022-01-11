@@ -1,14 +1,15 @@
 {{- $fullName := include "generic-helm-chart.fullname" . -}}
-{{- range $name, $entries := .Values.configmaps }}
+{{- range $name, $entries := (omit .Values.configmaps "nochecksum") }}
 apiVersion: v1
 kind: ConfigMap
 metadata:
   name: {{ $fullName }}-{{ $name }}
 data:
-{{- range $path, $files := $entries }}
-{{- range $filename, $contents := $files }}
+{{- range $path, $files := (omit $entries "nochecksum") }}
+{{- range $filename, $details := (omit $files "nochecksum") }}
   {{ $filename }}: |-
-    {{- $contents | nindent 4 }}
+    {{- $details.contents | nindent 4 }}
 {{- end }}
 {{- end }}
+---
 {{- end }}

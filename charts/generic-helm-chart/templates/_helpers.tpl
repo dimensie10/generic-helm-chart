@@ -24,6 +24,26 @@ If release name contains chart name it will be used as a full name.
 {{- end }}
 
 {{/*
+Create a service name, use fullname as default if override not specified.
+*/}}
+{{- define "generic-helm-chart.servicename" -}}
+{{- if .Values.serviceNameOverride -}}
+{{- .Values.serviceNameOverride | trunc 63 | trimSuffix "-" -}}
+{{- else -}}
+{{- if .Values.fullnameOverride -}}
+{{- .Values.fullnameOverride | trunc 63 | trimSuffix "-" -}}
+{{- else -}}
+{{- $name := default .Chart.Name .Values.nameOverride -}}
+{{- if contains $name .Release.Name -}}
+{{- .Release.Name | trunc 63 | trimSuffix "-" -}}
+{{- else -}}
+{{- printf "%s-%s" .Release.Name $name | trunc 63 | trimSuffix "-" -}}
+{{- end -}}
+{{- end -}}
+{{- end -}}
+{{- end -}}
+
+{{/*
 Create chart name and version as used by the chart label.
 */}}
 {{- define "generic-helm-chart.chart" -}}
