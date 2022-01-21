@@ -1,0 +1,46 @@
+{{- $fullName := include "generic-helm-charts.fullname" . -}}
+{{- if (or .Values.appConfig.enabled .Values.loggingConfig.enabled) }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ $fullName }}
+data:
+{{- if .Values.appConfig.enabled }}
+  {{ .Values.appConfig.filename }}: |
+    {{- include "generic-helm-charts.appConfig" . | nindent 4 }}
+{{- end }}
+{{- if .Values.loggingConfig.enabled }}
+  {{ .Values.loggingConfig.filename }}: |-
+    {{- .Values.loggingConfig.contents | nindent 4 }}
+{{- end }}
+{{- end }}
+{{- if .Values.configmaps }}
+{{- range $name, $entries := (omit .Values.configmaps "nochecksum") }}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ $fullName }}-{{ $name }}
+data:
+{{- range $path, $files := (omit $entries "nochecksum") }}
+{{- range $filename, $details := (omit $files "nochecksum") }}
+  {{ $filename }}: |-
+    {{- $details.contents | nindent 4 }}
+{{- end }}
+{{- end }}
+{{- end }}
+{{- end }}
+{{- if .Values.extraConfigmaps }}
+{{- range $name, $entries := (omit .Values.extraConfigmaps "nochecksum") }}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ $fullName }}-{{ $name }}
+data:
+{{- range $filename, $details := (omit $entries "nochecksum") }}
+  {{ $filename }}: |-
+    {{- $details.contents | nindent 4 }}
+{{- end }}
+{{- end }}
+{{- end }}

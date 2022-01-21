@@ -1,0 +1,222 @@
+{{- $fullName := include "generic-helm-charts.fullname" . -}}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "generic-helm-charts.fullname" . }}
+  labels:
+    {{- include "generic-helm-charts.labels" . | nindent 4 }}
+spec:
+  {{- if not .Values.autoscaling.enabled }}
+  replicas: {{ .Values.replicaCount }}
+  {{- end }}
+  selector:
+    matchLabels:
+      {{- include "generic-helm-charts.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      {{- if (or .Values.podAnnotations .Values.configmaps (and .Values.appConfig.enabled .Values.appConfig.checksum) (and .Values.loggingConfig.enabled .Values.loggingConfig.checksum)) }}
+      annotations:
+      {{- if (or .Values.configmaps (and .Values.appConfig.enabled .Values.appConfig.checksum) (and .Values.loggingConfig.enabled .Values.loggingConfig.checksum)) }}
+        configchecksum:
+        {{- with (omit .Values.configmaps "nochecksum") }}
+          {{- range $name, $entries := . }}
+          {{- if not $entries.nochecksum }}
+          {{- range $path, $files := (omit $entries "nochecksum") }}
+          {{- if not $files.nochecksum }}
+          {{- range $filename, $details := (omit $files "nochecksum") }}
+          {{- if not $details.nochecksum }}
+          {{ $name }}:{{ $path }}/{{ $filename }}={{ $details.contents | sha256sum | trunc 63 }}
+          {{- end }}
+          {{- end }}
+          {{- end }}
+          {{- end }}
+          {{- end }}
+          {{- end }}
+        {{- end }}
+        {{- with (omit .Values.extraConfigmaps "nochecksum") }}
+          {{- range $name, $entries := . }}
+          {{- if not $entries.nochecksum }}
+          {{- range $filename, $details := (omit $entries "nochecksum") }}
+          {{- if not $details.nochecksum }}
+          {{ $name }}:{{ $filename }}={{ $details.contents | sha256sum | trunc 63 }}
+          {{- end }}
+          {{- end }}
+          {{- end }}
+          {{- end }}
+        {{- end }}
+        {{- if (and .Values.appConfig.enabled .Values.appConfig.checksum) }}
+          appConfig:{{ .Values.appConfig.path }}/{{ .Values.appConfig.filename }}={{ "" | sha256sum | trunc 63 }}
+        {{- end }}
+        {{- if (and .Values.loggingConfig.enabled .Values.loggingConfig.checksum) }}
+          loggingConfig:{{ .Values.loggingConfig.path }}/{{ .Values.loggingConfig.filename }}={{ .Values.loggingConfig.contents | sha256sum | trunc 63 }}
+        {{- end }}
+      {{- end }}
+      {{- with .Values.podAnnotations }}
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- end }}
+      labels:
+        {{- include "generic-helm-charts.selectorLabels" . | nindent 8 }}
+    spec:
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      serviceAccountName: {{ include "generic-helm-charts.serviceAccountName" . }}
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      containers:
+        - name: {{ include "generic-helm-charts.containername" . }}
+          env:
+          {{- range $name, $value := .Values.env.open }}
+          {{- if not (empty $value) }}
+            - name: {{ $name | quote }}
+              value: {{ $value | quote }}
+          {{- end }}
+          {{- end }}
+          {{- range $name, $value := .Values.env.field }}
+          {{- if not ( empty $value) }}
+            - name: {{ $name | quote }}
+              valueFrom:
+                fieldRef:
+                  fieldPath: {{ $value | quote }}
+          {{- end }}
+          {{- end }}
+          {{- if .Values.env.existingSecret }}
+          {{- $secret_name := .Values.env.existingSecret }}
+          {{- range $name, $key := .Values.env.existingSecretMappings }}
+          {{- if not ( empty $key) }}
+            - name: {{ $name | quote }}
+              valueFrom:
+                secretKeyRef:
+                  name: {{ $secret_name | quote }}
+                  key: {{ $key | quote }}
+          {{- end }}
+          {{- end }}
+          {{- else }}
+          {{- $secret_name := include "generic-helm-charts.fullname" . }}
+          {{- range $name, $value := .Values.env.secret }}
+          {{- if not ( empty $value) }}
+            - name: {{ $name | quote }}
+              valueFrom:
+                secretKeyRef:
+                  name: {{ $secret_name }}
+                  key: {{ $name | quote }}
+          {{- end }}
+          {{- end }}
+          {{- end }}
+          securityContext:
+            {{- toYaml .Values.securityContext | nindent 12 }}
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          {{- if (or .Values.java.jdwp.enabled .Values.java.resources.xmx .Values.java.resources.xms .Values.loggingConfig.enabled .Values.appConfig.enabled) }}
+          {{- if .Values.commandOverride }}
+          command:
+            - "{{ .Values.commandOverride }}"
+          {{- end }}
+          args:
+            {{- if .Values.appConfig.enabled }}
+            - "-Dconfig.file={{ .Values.appConfig.path }}/{{ .Values.appConfig.filename }}"
+            {{- end }}
+            {{- if .Values.loggingConfig.enabled }}
+            - "-Dlogger.file={{ .Values.loggingConfig.path }}/{{ .Values.loggingConfig.filename }}"
+            {{- end }}
+            - "-Dhttp.port={{ .Values.port }}"
+            {{- if .Values.java.resources.xmx }}
+            - "-J-Xmx{{ .Values.java.resources.xmx | default "256m" }}"
+            {{- end }}
+            {{- if .Values.java.resources.xms }}
+            - "-J-Xms{{ .Values.java.resources.xms | default "256m" }}"
+            {{- end }}
+            {{- if .Values.java.jdwp.enabled }}
+            - "-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address={{ .Values.java.jdwp.port }}"
+            {{- end }}
+            {{- with .Values.extraArgs }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
+          {{- end }}
+          ports:
+            - name: http
+              containerPort: {{ .Values.port }}
+              protocol: TCP
+          livenessProbe:
+            httpGet:
+              path: {{ default "/" .Values.livenessProbe.monitorPath }}
+              port: http
+              scheme: HTTP
+            initialDelaySeconds: {{ default 0 .Values.livenessProbe.initialDelaySeconds }}
+            periodSeconds: {{ default 10 .Values.livenessProbe.periodSeconds }}
+            successThreshold: {{ default 1 .Values.livenessProbe.successThreshold }}
+            timeoutSeconds: {{ default 1 .Values.livenessProbe.timeoutSeconds }}
+            failureThreshold: {{ default 3 .Values.livenessProbe.failureThreshold }}
+          readinessProbe:
+            httpGet:
+              path: {{ default "/" .Values.readinessProbe.monitorPath }}
+              port: http
+              scheme: HTTP
+            initialDelaySeconds: {{ default 0 .Values.readinessProbe.initialDelaySeconds }}
+            periodSeconds: {{ default 10 .Values.readinessProbe.periodSeconds }}
+            successThreshold: {{ default 1 .Values.readinessProbe.successThreshold }}
+            timeoutSeconds: {{ default 1 .Values.readinessProbe.timeoutSeconds }}
+            failureThreshold: {{ default 3 .Values.readinessProbe.failureThreshold }}
+          {{- if (or .Values.configmaps .Values.extraVolumeMounts) }}
+          volumeMounts:
+            {{- if (or .Values.appConfig.enabled .Values.loggingConfig.enabled) }}
+            - name: configs
+              mountPath: {{ .Values.appConfig.path }}
+            {{- end }}
+            {{- range $name, $entries := (omit .Values.configmaps "nochecksum") }}
+            {{- range $path, $files := (omit $entries "nochecksum") }}
+            {{- if (gt (len (keys (omit $entries "nochecksum"))) 1) }}
+            {{- range $filename, $details := (omit $files "nochecksum") }}
+            - name: {{ $name }}
+              mountPath: {{ $path }}/{{ $filename }}
+              subPath: {{ $path }}/{{ $filename }}
+            {{- end }}
+            {{- else }}
+            - name: {{ $name }}
+              mountPath: {{ $path }}
+            {{- end }}
+            {{- end }}
+            {{- end }}
+            {{- with .Values.extraVolumeMounts }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
+          {{- end }}
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+        {{- with .Values.extraContainers }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+      {{- with .Values.hostAliases }}
+      hostAliases:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- if (or .Values.configmaps .Values.extraVolumes) }}
+      volumes:
+        {{- if (or .Values.appConfig.enabled .Values.loggingConfig.enabled) }}
+        - name: configs
+          configMap:
+            name: {{ $fullName }}
+        {{- end }}
+        {{- range $name, $files := (omit .Values.configmaps "nochecksum") }}
+        - name: {{ $name }}
+          configMap:
+            name: {{ $fullName }}-{{ $name }}
+        {{- end }}
+        {{- with .Values.extraVolumes }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+      {{- end }}
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
