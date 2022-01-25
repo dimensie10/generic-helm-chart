@@ -50,7 +50,7 @@ spec:
                   {{- else if kindIs "string" $svcPort }}
                   name: {{ $svcPort }}
                   {{- else }}
-                  name: {{ $svcPort | toString }}
+                  number: {{ $svcPort }}
                   {{- end }}
               {{- else }}
               serviceName: {{ $svcName }}
@@ -107,7 +107,7 @@ spec:
                   {{- else if kindIs "string" $svcPort }}
                   name: {{ $svcPort }}
                   {{- else }}
-                  name: {{ $svcPort | toString }}
+                  number: {{ $svcPort }}
                   {{- end }}
               {{- else }}
               serviceName: {{ $svcName }}
