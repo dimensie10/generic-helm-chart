@@ -75,7 +75,10 @@ securityContext: {}
   # runAsNonRoot: true
   # runAsUser: 1000
 
-livenessProbe: {}
+livenessProbe:
+  enabled: true
+  # command:
+  # - ls
   # monitorPath: /
   # initialDelaySeconds: 0
   # periodSeconds: 10
@@ -83,7 +86,21 @@ livenessProbe: {}
   # successThreshold: 1
   # failureThreshold: 3
 
-readinessProbe: {}
+readinessProbe:
+  enabled: true
+  # command:
+  # - ls
+  # monitorPath: /
+  # initialDelaySeconds: 0
+  # periodSeconds: 10
+  # timeoutSeconds: 1
+  # successThreshold: 1
+  # failureThreshold: 3
+
+startupProbe:
+  enabled: false
+  # command:
+  # - ls
   # monitorPath: /
   # initialDelaySeconds: 0
   # periodSeconds: 10

@@ -139,26 +139,60 @@ spec:
             - name: http
               containerPort: {{ .Values.port }}
               protocol: TCP
+          {{- if .Values.livenessProbe.enabled }}
           livenessProbe:
+            {{- if .Values.livenessProbe.command }}
+            exec:
+              command:
+                {{- toYaml .Values.livenessProbe.command | nindent 16 }}
+            {{- else }}
             httpGet:
               path: {{ default "/" .Values.livenessProbe.monitorPath }}
               port: http
               scheme: HTTP
+            {{- end }}
             initialDelaySeconds: {{ default 0 .Values.livenessProbe.initialDelaySeconds }}
             periodSeconds: {{ default 10 .Values.livenessProbe.periodSeconds }}
             successThreshold: {{ default 1 .Values.livenessProbe.successThreshold }}
             timeoutSeconds: {{ default 1 .Values.livenessProbe.timeoutSeconds }}
             failureThreshold: {{ default 3 .Values.livenessProbe.failureThreshold }}
+          {{- end }}
+          {{- if .Values.readinessProbe.enabled }}
           readinessProbe:
+            {{- if .Values.readinessProbe.command }}
+            exec:
+              command:
+                {{- toYaml .Values.readinessProbe.command | nindent 16 }}
+            {{- else }}
             httpGet:
               path: {{ default "/" .Values.readinessProbe.monitorPath }}
               port: http
               scheme: HTTP
+            {{- end }}
             initialDelaySeconds: {{ default 0 .Values.readinessProbe.initialDelaySeconds }}
             periodSeconds: {{ default 10 .Values.readinessProbe.periodSeconds }}
             successThreshold: {{ default 1 .Values.readinessProbe.successThreshold }}
             timeoutSeconds: {{ default 1 .Values.readinessProbe.timeoutSeconds }}
             failureThreshold: {{ default 3 .Values.readinessProbe.failureThreshold }}
+          {{- end }}
+          {{- if .Values.startupProbe.enabled }}
+          startupProbe:
+            {{- if .Values.startupProbe.command }}
+            exec:
+              command:
+                {{- toYaml .Values.startupProbe.command | nindent 16 }}
+            {{- else }}
+            httpGet:
+              path: {{ default "/" .Values.startupProbe.monitorPath }}
+              port: http
+              scheme: HTTP
+            {{- end }}
+            initialDelaySeconds: {{ default 0 .Values.startupProbe.initialDelaySeconds }}
+            periodSeconds: {{ default 10 .Values.startupProbe.periodSeconds }}
+            successThreshold: {{ default 1 .Values.startupProbe.successThreshold }}
+            timeoutSeconds: {{ default 1 .Values.startupProbe.timeoutSeconds }}
+            failureThreshold: {{ default 3 .Values.startupProbe.failureThreshold }}
+          {{- end }}
           {{- if (or .Values.configmaps .Values.extraVolumeMounts) }}
           volumeMounts:
             {{- if (or .Values.appConfig.enabled .Values.loggingConfig.enabled) }}
