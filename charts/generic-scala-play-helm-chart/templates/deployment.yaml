@@ -193,7 +193,7 @@ spec:
             timeoutSeconds: {{ default 1 .Values.startupProbe.timeoutSeconds }}
             failureThreshold: {{ default 3 .Values.startupProbe.failureThreshold }}
           {{- end }}
-          {{- if (or .Values.configmaps .Values.extraVolumeMounts) }}
+          {{- if (or .Values.configmaps .Values.extraVolumeMounts .Values.appConfig.enabled .Values.loggingConfig.enabled) }}
           volumeMounts:
             {{- if (or .Values.appConfig.enabled .Values.loggingConfig.enabled) }}
             - name: configs
@@ -226,7 +226,7 @@ spec:
       hostAliases:
         {{- toYaml . | nindent 8 }}
       {{- end }}
-      {{- if (or .Values.configmaps .Values.extraVolumes) }}
+      {{- if (or .Values.configmaps .Values.extraVolumes .Values.appConfig.enabled .Values.loggingConfig.enabled) }}
       volumes:
         {{- if (or .Values.appConfig.enabled .Values.loggingConfig.enabled) }}
         - name: configs
