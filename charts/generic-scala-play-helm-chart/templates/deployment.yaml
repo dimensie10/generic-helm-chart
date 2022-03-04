@@ -45,7 +45,7 @@ spec:
           {{- end }}
         {{- end }}
         {{- if (and .Values.appConfig.enabled .Values.appConfig.checksum) }}
-          appConfig:{{ .Values.appConfig.path }}/{{ .Values.appConfig.filename }}={{ "" | sha256sum | trunc 63 }}
+          appConfig:{{ .Values.appConfig.path }}/{{ .Values.appConfig.filename }}={{ .Values.appConfig.contents | sha256sum | trunc 63 }}
         {{- end }}
         {{- if (and .Values.loggingConfig.enabled .Values.loggingConfig.checksum) }}
           loggingConfig:{{ .Values.loggingConfig.path }}/{{ .Values.loggingConfig.filename }}={{ .Values.loggingConfig.contents | sha256sum | trunc 63 }}
