@@ -1,13 +1,29 @@
+{{- if eq .Values.kind "Deployment" }}
 {{- $fullName := include "generic-helm-charts.fullname" . -}}
+{{- $mainPort := .Values.port -}}
 apiVersion: apps/v1
-kind: Deployment
+kind: {{ .Values.kind }}
 metadata:
   name: {{ include "generic-helm-charts.fullname" . }}
   labels:
     {{- include "generic-helm-charts.labels" . | nindent 4 }}
+    {{- if .Values.annotations }}
+  annotations:
+    {{ toYaml .Values.annotations | nindent 4 }}
+    {{- end }}
 spec:
+  {{- if .Values.updateStrategy }}
+  {{- if eq .Values.kind "DaemonSet" }}
+  updateStrategy:
+  {{- else if eq .Values.kind "Deployment" }}
+  strategy:
+  {{- end }}
+    {{ toYaml .Values.updateStrategy | nindent 4 }}
+  {{- end }}
+  {{- if ne .Values.kind "DaemonSet" }}
   {{- if not .Values.autoscaling.enabled }}
   replicas: {{ .Values.replicaCount }}
+  {{- end }}
   {{- end }}
   selector:
     matchLabels:
@@ -58,13 +74,28 @@ spec:
       labels:
         {{- include "generic-helm-charts.selectorLabels" . | nindent 8 }}
     spec:
+      {{- if .Values.priorityClassName }}
+      priorityClassName: {{ .Values.priorityClassName | quote }}
+      {{- end }}
       {{- with .Values.imagePullSecrets }}
       imagePullSecrets:
         {{- toYaml . | nindent 8 }}
       {{- end }}
       serviceAccountName: {{ include "generic-helm-charts.serviceAccountName" . }}
+      {{- if .Values.podSecurityContext }}
       securityContext:
         {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      {{- end }}
+      hostNetwork: {{ .Values.hostNetwork }}
+      dnsPolicy: {{ .Values.dnsPolicy }}
+      {{- with .Values.dnsConfig }}
+      dnsConfig:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.hostAliases }}
+      hostAliases:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
       containers:
         - name: {{ include "generic-helm-charts.containername" . }}
           env:
@@ -105,6 +136,11 @@ spec:
           {{- end }}
           {{- end }}
           {{- end }}
+            - name: K8S_NODE_NAME
+              valueFrom:
+                fieldRef:
+                  apiVersion: v1
+                  fieldPath: spec.nodeName
           securityContext:
             {{- toYaml .Values.securityContext | nindent 12 }}
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
@@ -135,10 +171,18 @@ spec:
             {{- toYaml . | nindent 12 }}
             {{- end }}
           {{- end }}
+          {{- if .Values.service.ports }}
           ports:
-            - name: http
-              containerPort: {{ .Values.port }}
-              protocol: TCP
+          {{- range $port := .Values.service.ports }}
+          - name: {{ default "http" $port.name }}
+            containerPort: {{ default $mainPort $port.targetPort }}
+            protocol: {{ default "TCP" $port.protocol }}
+          {{- end }}
+          {{- end }}
+          {{- with .Values.lifecycle }}
+          lifecycle:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
           {{- if .Values.livenessProbe.enabled }}
           livenessProbe:
             {{- if .Values.livenessProbe.command }}
@@ -195,7 +239,7 @@ spec:
           {{- end }}
           {{- if (or .Values.configmaps .Values.extraVolumeMounts .Values.appConfig.enabled .Values.loggingConfig.enabled) }}
           volumeMounts:
-            {{- if (or .Values.appConfig.enabled .Values.loggingConfig.enabled) }}
+            {{- if (and .Values.config.volumeMountEnabled (or .Values.appConfig.enabled .Values.loggingConfig.enabled)) }}
             - name: configs
               mountPath: {{ .Values.appConfig.path }}
             {{- end }}
@@ -217,18 +261,22 @@ spec:
             {{- toYaml . | nindent 12 }}
             {{- end }}
           {{- end }}
+          {{- if eq .Values.kind "DaemonSet" }}
+          {{- toYaml .Values.daemonSetVolumeMounts | nindent 10 }}
+          {{- end }}
           resources:
             {{- toYaml .Values.resources | nindent 12 }}
-        {{- with .Values.extraContainers }}
-        {{- toYaml . | nindent 8 }}
+        {{- if .Values.extraContainers }}
+        {{ toYaml .Values.extraContainers | nindent 8 }}
         {{- end }}
-      {{- with .Values.hostAliases }}
-      hostAliases:
-        {{- toYaml . | nindent 8 }}
-      {{- end }}
+        {{- if .Values.extraInitContainers }}
+        initContainers:
+        {{ toYaml .Values.extraInitContainers | nindent 8 }}
+        {{- end }}
+      terminationGracePeriodSeconds: 30
       {{- if (or .Values.configmaps .Values.extraVolumes .Values.appConfig.enabled .Values.loggingConfig.enabled) }}
       volumes:
-        {{- if (or .Values.appConfig.enabled .Values.loggingConfig.enabled) }}
+        {{- if (and .Values.config.volumeEnabled (or .Values.appConfig.enabled .Values.loggingConfig.enabled)) }}
         - name: configs
           configMap:
             name: {{ $fullName }}
@@ -240,6 +288,9 @@ spec:
         {{- end }}
         {{- with .Values.extraVolumes }}
         {{- toYaml . | nindent 8 }}
+        {{- end }}
+        {{- if eq .Values.kind "DaemonSet" }}
+        {{- toYaml .Values.daemonSetVolumes | nindent 8 }}
         {{- end }}
       {{- end }}
       {{- with .Values.nodeSelector }}
@@ -254,3 +305,4 @@ spec:
       tolerations:
         {{- toYaml . | nindent 8 }}
       {{- end }}
+{{- end }}

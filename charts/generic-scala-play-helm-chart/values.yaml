@@ -1,5 +1,9 @@
 replicaCount: 1
 
+kind: Deployment
+
+updateStrategy: {}
+
 image:
   repository: notdefined
   pullPolicy: IfNotPresent
@@ -11,6 +15,10 @@ nameOverride: ""
 fullnameOverride: ""
 commandOverride: ""
 containerNameOverride: ""
+
+config:
+  volumeEnabled: true
+  volumeMountEnabled: true
 
 loggingConfig:
   immutable: true
@@ -39,7 +47,11 @@ extraArgs: []
 extraVolumes: []
 extraVolumeMounts: []
 extraContainers: []
+extraInitContainers: []
 extraConfigmaps: {}
+
+daemonSetVolumes: []
+daemonSetVolumeMounts: []
 
 secret:
   labels: {}
@@ -62,7 +74,15 @@ serviceAccount:
   # If not set and create is true, a name is generated using the fullname template
   name: ""
 
+annotations: {}
+
 podAnnotations: {}
+
+# Specify to use specific priorityClass for pods
+# ref: https://kubernetes.io/docs/concepts/configuration/pod-priority-preemption/
+# If a Pod cannot be scheduled, the scheduler tries to preempt (evict) lower priority
+# Pods to make scheduling of the pending Pod possible.
+priorityClassName: ""
 
 podSecurityContext: {}
   # fsGroup: 2000
@@ -173,3 +193,23 @@ nodeSelector: {}
 tolerations: []
 
 affinity: {}
+
+hostNetwork: false
+dnsPolicy: ClusterFirst
+
+dnsConfig: {}
+#   nameservers:
+#     - 1.2.3.4
+#   searches:
+#     - ns1.svc.cluster-domain.example
+#     - my.dns.search.suffix
+#   options:
+#     - name: ndots
+#       value: "2"
+#     - name: edns0
+
+hostAliases: []
+#   - ip: "1.2.3.4"
+#     hostnames:
+#     - "foo.local"
+#     - "bar.local"
