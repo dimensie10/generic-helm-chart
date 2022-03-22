@@ -1,9 +1,12 @@
 {{- $fullName := include "generic-helm-charts.fullname" . -}}
+{{- $configmapName := include "generic-helm-charts.configmapname" . -}}
+{{- if .Values.configmaps }}
 {{- range $name, $entries := (omit .Values.configmaps "nochecksum") }}
+---
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: {{ $fullName }}-{{ $name }}
+  name: {{ $configmapName }}
 data:
 {{- range $path, $files := (omit $entries "nochecksum") }}
 {{- range $filename, $details := (omit $files "nochecksum") }}
@@ -11,5 +14,19 @@ data:
     {{- $details.contents | nindent 4 }}
 {{- end }}
 {{- end }}
+{{- end }}
+{{- end }}
+{{- if .Values.extraConfigmaps }}
+{{- range $name, $entries := (omit .Values.extraConfigmaps "nochecksum") }}
 ---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ $configmapName }}-{{ $name }}
+data:
+{{- range $filename, $details := (omit $entries "nochecksum") }}
+  {{ $filename }}: |-
+    {{- $details.contents | nindent 4 }}
+{{- end }}
+{{- end }}
 {{- end }}

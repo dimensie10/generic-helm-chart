@@ -1,4 +1,5 @@
 {{- $svcName := include "generic-helm-charts.servicename" . -}}
+{{- $mainPort := .Values.port -}}
 apiVersion: v1
 kind: Service
 metadata:
@@ -8,9 +9,11 @@ metadata:
 spec:
   type: {{ .Values.service.type }}
   ports:
-    - port: {{ .Values.service.port }}
-      targetPort: {{ .Values.service.port }}
-      protocol: TCP
-      name: http
+    {{- range $port := .Values.service.ports }}
+    - name: {{ default "http" $port.name }}
+      port: {{ $port.port }}
+      targetPort: {{ default $mainPort $port.targetPort }}
+      protocol: {{ default "TCP" $port.protocol }}
+    {{- end }}
   selector:
     {{- include "generic-helm-charts.selectorLabels" . | nindent 4 }}

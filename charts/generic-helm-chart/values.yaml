@@ -1,5 +1,9 @@
 replicaCount: 1
 
+kind: Deployment
+
+updateStrategy: {}
+
 image:
   repository: notdefined
   pullPolicy: IfNotPresent
@@ -9,6 +13,15 @@ image:
 imagePullSecrets: []
 nameOverride: ""
 fullnameOverride: ""
+commandOverride: ""
+containerNameOverride: ""
+
+extraArgs: []
+extraVolumes: []
+extraVolumeMounts: []
+extraContainers: []
+extraInitContainers: []
+extraConfigmaps: {}
 
 secret:
   labels: {}
@@ -31,7 +44,15 @@ serviceAccount:
   # If not set and create is true, a name is generated using the fullname template
   name: ""
 
+annotations: {}
+
 podAnnotations: {}
+
+# Specify to use specific priorityClass for pods
+# ref: https://kubernetes.io/docs/concepts/configuration/pod-priority-preemption/
+# If a Pod cannot be scheduled, the scheduler tries to preempt (evict) lower priority
+# Pods to make scheduling of the pending Pod possible.
+priorityClassName: ""
 
 podSecurityContext: {}
   # fsGroup: 2000
@@ -44,7 +65,10 @@ securityContext: {}
   # runAsNonRoot: true
   # runAsUser: 1000
 
-livenessProbe: {}
+livenessProbe:
+  enabled: true
+  # command:
+  # - ls
   # monitorPath: /
   # initialDelaySeconds: 0
   # periodSeconds: 10
@@ -52,19 +76,38 @@ livenessProbe: {}
   # successThreshold: 1
   # failureThreshold: 3
 
-readinessProbe: {}
+readinessProbe:
+  enabled: true
+  # command:
+  # - ls
   # monitorPath: /
   # initialDelaySeconds: 0
   # periodSeconds: 10
   # timeoutSeconds: 1
   # successThreshold: 1
   # failureThreshold: 3
+
+startupProbe:
+  enabled: false
+  # command:
+  # - ls
+  # monitorPath: /
+  # initialDelaySeconds: 0
+  # periodSeconds: 10
+  # timeoutSeconds: 1
+  # successThreshold: 1
+  # failureThreshold: 3
+
+hostAliases: []
 
 port: 80
 
 service:
   type: ClusterIP
-  port: 80
+  port:
+    number: 80
+    name: http
+    protocol: TCP
 
 ingress:
   enabled: false
@@ -123,3 +166,26 @@ nodeSelector: {}
 tolerations: []
 
 affinity: {}
+
+terminationGracePeriodSeconds: 30
+hostNetwork: false
+dnsPolicy: ClusterFirst
+
+dnsConfig: {}
+#   nameservers:
+#     - 1.2.3.4
+#   searches:
+#     - ns1.svc.cluster-domain.example
+#     - my.dns.search.suffix
+#   options:
+#     - name: ndots
+#       value: "2"
+#     - name: edns0
+
+hostAliases: []
+#   - ip: "1.2.3.4"
+#     hostnames:
+#     - "foo.local"
+#     - "bar.local"
+
+volumeClaimTemplates: []

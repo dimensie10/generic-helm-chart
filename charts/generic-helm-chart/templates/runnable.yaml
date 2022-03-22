@@ -1,24 +1,45 @@
 {{- $fullName := include "generic-helm-charts.fullname" . -}}
+{{- $labels := include "generic-helm-charts.labels" . }}
+{{- $selectorLabels := include "generic-helm-charts.selectorLabels" . }}
+{{- $configmapName := include "generic-helm-charts.configmapname" . -}}
+{{- $mainPort := .Values.port -}}
 apiVersion: apps/v1
-kind: Deployment
+kind: {{ .Values.kind }}
 metadata:
   name: {{ include "generic-helm-charts.fullname" . }}
   labels:
-    {{- include "generic-helm-charts.labels" . | nindent 4 }}
+    {{- $labels | nindent 4 }}
+  {{- if .Values.annotations }}
+  annotations:
+    {{ toYaml .Values.annotations | nindent 4 }}
+  {{- end }}
 spec:
+  {{- if .Values.updateStrategy }}
+  {{- if or (eq .Values.kind "DaemonSet") (eq .Values.kind "StatefulSet") }}
+  updateStrategy:
+  {{- else }}
+  strategy:
+  {{- end }}
+    {{ toYaml .Values.updateStrategy | nindent 4 }}
+  {{- end }}
+  {{- if ne .Values.kind "DaemonSet" }}
   {{- if not .Values.autoscaling.enabled }}
   replicas: {{ .Values.replicaCount }}
   {{- end }}
+  {{- end }}
+  {{- if eq .Values.kind "StatefulSet" }}
+  serviceName: {{ include "generic-helm-charts.servicename" . }}
+  {{- end }}
   selector:
     matchLabels:
-      {{- include "generic-helm-charts.selectorLabels" . | nindent 6 }}
+      {{- $selectorLabels | nindent 6 }}
   template:
     metadata:
       {{- if (or .Values.podAnnotations .Values.configmaps) }}
-      {{- if (not .Values.configmaps.nochecksum) }}
       annotations:
-      {{- with (omit .Values.configmaps "nochecksum") }}
+      {{- if (or .Values.configmaps) }}
         configchecksum:
+        {{- with (omit .Values.configmaps "nochecksum") }}
           {{- range $name, $entries := . }}
           {{- if not $entries.nochecksum }}
           {{- range $path, $files := (omit $entries "nochecksum") }}
@@ -32,24 +53,51 @@ spec:
           {{- end }}
           {{- end }}
           {{- end }}
+        {{- end }}
+        {{- with (omit .Values.extraConfigmaps "nochecksum") }}
+          {{- range $name, $entries := . }}
+          {{- if not $entries.nochecksum }}
+          {{- range $filename, $details := (omit $entries "nochecksum") }}
+          {{- if not $details.nochecksum }}
+          {{ $name }}:{{ $filename }}={{ $details.contents | sha256sum | trunc 63 }}
+          {{- end }}
+          {{- end }}
+          {{- end }}
+          {{- end }}
+        {{- end }}
       {{- end }}
       {{- with .Values.podAnnotations }}
         {{- toYaml . | nindent 8 }}
       {{- end }}
       {{- end }}
-      {{- end }}
       labels:
-        {{- include "generic-helm-charts.selectorLabels" . | nindent 8 }}
+        {{- $selectorLabels | nindent 8 }}
     spec:
+      {{- if .Values.priorityClassName }}
+      priorityClassName: {{ .Values.priorityClassName | quote }}
+      {{- end }}
       {{- with .Values.imagePullSecrets }}
       imagePullSecrets:
         {{- toYaml . | nindent 8 }}
       {{- end }}
       serviceAccountName: {{ include "generic-helm-charts.serviceAccountName" . }}
+      {{- if .Values.podSecurityContext }}
       securityContext:
         {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      {{- end }}
+      terminationGracePeriodSeconds: {{ .Values.terminationGracePeriodSeconds }}
+      hostNetwork: {{ .Values.hostNetwork }}
+      dnsPolicy: {{ .Values.dnsPolicy }}
+      {{- with .Values.dnsConfig }}
+      dnsConfig:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.hostAliases }}
+      hostAliases:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
       containers:
-        - name: {{ .Chart.Name }}
+        - name: {{ include "generic-helm-charts.containername" . }}
           env:
           {{- range $name, $value := .Values.env.open }}
           {{- if not (empty $value) }}
@@ -88,35 +136,90 @@ spec:
           {{- end }}
           {{- end }}
           {{- end }}
+            - name: K8S_NODE_NAME
+              valueFrom:
+                fieldRef:
+                  apiVersion: v1
+                  fieldPath: spec.nodeName
           securityContext:
             {{- toYaml .Values.securityContext | nindent 12 }}
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
           imagePullPolicy: {{ .Values.image.pullPolicy }}
+          {{- if .Values.commandOverride }}
+          command:
+            - "{{ .Values.commandOverride }}"
+          {{- end }}
+          {{- with .Values.extraArgs }}
+          args:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          {{- if .Values.service.ports }}
           ports:
-            - name: http
-              containerPort: {{ .Values.port }}
-              protocol: TCP
+          {{- range $port := .Values.service.ports }}
+          - name: {{ default "http" $port.name }}
+            containerPort: {{ default $mainPort $port.targetPort }}
+            protocol: {{ default "TCP" $port.protocol }}
+          {{- end }}
+          {{- end }}
+          {{- with .Values.lifecycle }}
+          lifecycle:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          {{- if .Values.livenessProbe.enabled }}
           livenessProbe:
+            {{- if .Values.livenessProbe.command }}
+            exec:
+              command:
+                {{- toYaml .Values.livenessProbe.command | nindent 16 }}
+            {{- else }}
             httpGet:
               path: {{ default "/" .Values.livenessProbe.monitorPath }}
               port: http
               scheme: HTTP
+            {{- end }}
             initialDelaySeconds: {{ default 0 .Values.livenessProbe.initialDelaySeconds }}
             periodSeconds: {{ default 10 .Values.livenessProbe.periodSeconds }}
             successThreshold: {{ default 1 .Values.livenessProbe.successThreshold }}
             timeoutSeconds: {{ default 1 .Values.livenessProbe.timeoutSeconds }}
             failureThreshold: {{ default 3 .Values.livenessProbe.failureThreshold }}
+          {{- end }}
+          {{- if .Values.readinessProbe.enabled }}
           readinessProbe:
+            {{- if .Values.readinessProbe.command }}
+            exec:
+              command:
+                {{- toYaml .Values.readinessProbe.command | nindent 16 }}
+            {{- else }}
             httpGet:
               path: {{ default "/" .Values.readinessProbe.monitorPath }}
               port: http
               scheme: HTTP
+            {{- end }}
             initialDelaySeconds: {{ default 0 .Values.readinessProbe.initialDelaySeconds }}
             periodSeconds: {{ default 10 .Values.readinessProbe.periodSeconds }}
             successThreshold: {{ default 1 .Values.readinessProbe.successThreshold }}
             timeoutSeconds: {{ default 1 .Values.readinessProbe.timeoutSeconds }}
             failureThreshold: {{ default 3 .Values.readinessProbe.failureThreshold }}
-          {{- if .Values.configmaps }}
+          {{- end }}
+          {{- if .Values.startupProbe.enabled }}
+          startupProbe:
+            {{- if .Values.startupProbe.command }}
+            exec:
+              command:
+                {{- toYaml .Values.startupProbe.command | nindent 16 }}
+            {{- else }}
+            httpGet:
+              path: {{ default "/" .Values.startupProbe.monitorPath }}
+              port: http
+              scheme: HTTP
+            {{- end }}
+            initialDelaySeconds: {{ default 0 .Values.startupProbe.initialDelaySeconds }}
+            periodSeconds: {{ default 10 .Values.startupProbe.periodSeconds }}
+            successThreshold: {{ default 1 .Values.startupProbe.successThreshold }}
+            timeoutSeconds: {{ default 1 .Values.startupProbe.timeoutSeconds }}
+            failureThreshold: {{ default 3 .Values.startupProbe.failureThreshold }}
+          {{- end }}
+          {{- if (or .Values.configmaps .Values.extraVolumeMounts) }}
           volumeMounts:
             {{- range $name, $entries := (omit .Values.configmaps "nochecksum") }}
             {{- range $path, $files := (omit $entries "nochecksum") }}
@@ -132,15 +235,28 @@ spec:
             {{- end }}
             {{- end }}
             {{- end }}
+            {{- with .Values.extraVolumeMounts }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
           {{- end }}
           resources:
             {{- toYaml .Values.resources | nindent 12 }}
-      {{- if .Values.configmaps }}
+        {{- if .Values.extraContainers }}
+        {{ toYaml .Values.extraContainers | nindent 8 }}
+        {{- end }}
+        {{- if .Values.extraInitContainers }}
+        initContainers:
+        {{ toYaml .Values.extraInitContainers | nindent 8 }}
+        {{- end }}
+      {{- if (or .Values.configmaps .Values.extraVolumes) }}
       volumes:
         {{- range $name, $files := (omit .Values.configmaps "nochecksum") }}
         - name: {{ $name }}
           configMap:
-            name: {{ $fullName }}-{{ $name }}
+            name: {{ $configmapName }}
+        {{- end }}
+        {{- with .Values.extraVolumes }}
+        {{- toYaml . | nindent 8 }}
         {{- end }}
       {{- end }}
       {{- with .Values.nodeSelector }}
@@ -155,3 +271,14 @@ spec:
       tolerations:
         {{- toYaml . | nindent 8 }}
       {{- end }}
+  {{- if eq .Values.kind "StatefulSet" }}
+  volumeClaimTemplates:
+  {{- range .Values.volumeClaimTemplates }}
+  - metadata:
+      name: {{ .name }}
+      labels:
+        {{- $selectorLabels | nindent 8 }}
+    spec:
+      {{- toYaml .spec | nindent 6 }}
+  {{- end }}
+  {{- end }}

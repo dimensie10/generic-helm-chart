@@ -1,3 +1,6 @@
+https://github.com/fluent/helm-charts/blob/main/charts/fluent-bit
+https://github.com/kokuwaio/helm-charts/tree/main/charts/fluentd-elasticsearch
+
 #
 
 ## Configuring ConfigMaps
