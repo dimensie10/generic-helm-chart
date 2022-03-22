@@ -3,6 +3,16 @@ entries:
   generic-helm-chart:
   - apiVersion: v2
     appVersion: 1.0.0
+    created: "2022-03-22T07:25:39.511751761Z"
+    description: A generic Helm chart for Kubernetes
+    digest: ebfb1b46f734a22a21505c667c3827ba233670a5b2d4e97313ec19ca4f89f516
+    name: generic-helm-chart
+    type: application
+    urls:
+    - https://github.com/dimensie10/generic-helm-chart/releases/download/generic-helm-chart-2.0.0/generic-helm-chart-2.0.0.tgz
+    version: 2.0.0
+  - apiVersion: v2
+    appVersion: 1.0.0
     created: "2022-01-23T19:20:16.948339207Z"
     description: A generic Helm chart for Kubernetes
     digest: 7494d462f98436e12de9c5dfb932304373f2a7eee649ae0cfef01a552675f6b3
