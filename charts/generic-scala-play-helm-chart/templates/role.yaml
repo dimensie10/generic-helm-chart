@@ -1,0 +1,13 @@
+{{- if .Values.rbac.role.create -}}
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: {{ include "generic-helm-charts.fullname" . }}
+  labels:
+    {{- include "generic-helm-charts.labels" . | nindent 4 }}
+  {{- with .Values.rbac.role.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+{{ toYaml .Values.rbac.role.spec }}
+{{- end }}

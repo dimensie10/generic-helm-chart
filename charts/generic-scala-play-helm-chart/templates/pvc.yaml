@@ -1,0 +1,12 @@
+{{- $fullName := include "generic-helm-charts.fullname" . -}}
+{{- $labels := include "generic-helm-charts.labels" . -}}
+{{- with .Values.persistentVolumeClaim }}
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ $fullName }}
+  labels:
+    {{- $labels | nindent 4 }}
+spec:
+  {{- toYaml . | nindent 2 }}
+{{- end }}

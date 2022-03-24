@@ -50,9 +50,6 @@ extraContainers: []
 extraInitContainers: []
 extraConfigmaps: {}
 
-daemonSetVolumes: []
-daemonSetVolumeMounts: []
-
 secret:
   labels: {}
 
@@ -133,8 +130,13 @@ hostAliases: []
 port: 9000
 
 service:
+  enabled: true
   type: ClusterIP
-  port: 80
+  ports:
+    - port: 80
+      name: http
+      # targetPort: 9000 # defaults to .Values.port
+      protocol: TCP
 
 ingress:
   enabled: false
@@ -194,6 +196,7 @@ tolerations: []
 
 affinity: {}
 
+terminationGracePeriodSeconds: 30
 hostNetwork: false
 dnsPolicy: ClusterFirst
 
@@ -213,3 +216,25 @@ hostAliases: []
 #     hostnames:
 #     - "foo.local"
 #     - "bar.local"
+
+volumeClaimTemplates: []
+
+persistentVolumeClaim: {}
+
+rbac:
+  clusterRole:
+    create: false
+    spec: {}
+    annotations: {}
+  clusterRoleBinding:
+    create: false
+    spec: {}
+    annotations: {}
+  role:
+    create: false
+    spec: {}
+    annotations: {}
+  roleBinding:
+    create: false
+    spec: {}
+    annotations: {}

@@ -1,21 +1,23 @@
-{{- if eq .Values.kind "Deployment" }}
 {{- $fullName := include "generic-helm-charts.fullname" . -}}
+{{- $labels := include "generic-helm-charts.labels" . }}
+{{- $selectorLabels := include "generic-helm-charts.selectorLabels" . }}
+{{- $configmapName := include "generic-helm-charts.configmapname" . -}}
 {{- $mainPort := .Values.port -}}
 apiVersion: apps/v1
 kind: {{ .Values.kind }}
 metadata:
   name: {{ include "generic-helm-charts.fullname" . }}
   labels:
-    {{- include "generic-helm-charts.labels" . | nindent 4 }}
+    {{- $labels | nindent 4 }}
     {{- if .Values.annotations }}
   annotations:
     {{ toYaml .Values.annotations | nindent 4 }}
     {{- end }}
 spec:
   {{- if .Values.updateStrategy }}
-  {{- if eq .Values.kind "DaemonSet" }}
+  {{- if or (eq .Values.kind "DaemonSet") (eq .Values.kind "StatefulSet") }}
   updateStrategy:
-  {{- else if eq .Values.kind "Deployment" }}
+  {{- else }}
   strategy:
   {{- end }}
     {{ toYaml .Values.updateStrategy | nindent 4 }}
@@ -25,9 +27,12 @@ spec:
   replicas: {{ .Values.replicaCount }}
   {{- end }}
   {{- end }}
+  {{- if eq .Values.kind "StatefulSet" }}
+  serviceName: {{ include "generic-helm-charts.servicename" . }}
+  {{- end }}
   selector:
     matchLabels:
-      {{- include "generic-helm-charts.selectorLabels" . | nindent 6 }}
+      {{- $selectorLabels | nindent 6 }}
   template:
     metadata:
       {{- if (or .Values.podAnnotations .Values.configmaps (and .Values.appConfig.enabled .Values.appConfig.checksum) (and .Values.loggingConfig.enabled .Values.loggingConfig.checksum)) }}
@@ -72,7 +77,7 @@ spec:
       {{- end }}
       {{- end }}
       labels:
-        {{- include "generic-helm-charts.selectorLabels" . | nindent 8 }}
+        {{- $selectorLabels | nindent 8 }}
     spec:
       {{- if .Values.priorityClassName }}
       priorityClassName: {{ .Values.priorityClassName | quote }}
@@ -86,6 +91,7 @@ spec:
       securityContext:
         {{- toYaml .Values.podSecurityContext | nindent 8 }}
       {{- end }}
+      terminationGracePeriodSeconds: {{ .Values.terminationGracePeriodSeconds }}
       hostNetwork: {{ .Values.hostNetwork }}
       dnsPolicy: {{ .Values.dnsPolicy }}
       {{- with .Values.dnsConfig }}
@@ -261,9 +267,6 @@ spec:
             {{- toYaml . | nindent 12 }}
             {{- end }}
           {{- end }}
-          {{- if eq .Values.kind "DaemonSet" }}
-          {{- toYaml .Values.daemonSetVolumeMounts | nindent 10 }}
-          {{- end }}
           resources:
             {{- toYaml .Values.resources | nindent 12 }}
         {{- if .Values.extraContainers }}
@@ -273,7 +276,6 @@ spec:
         initContainers:
         {{ toYaml .Values.extraInitContainers | nindent 8 }}
         {{- end }}
-      terminationGracePeriodSeconds: 30
       {{- if (or .Values.configmaps .Values.extraVolumes .Values.appConfig.enabled .Values.loggingConfig.enabled) }}
       volumes:
         {{- if (and .Values.config.volumeEnabled (or .Values.appConfig.enabled .Values.loggingConfig.enabled)) }}
@@ -284,13 +286,10 @@ spec:
         {{- range $name, $files := (omit .Values.configmaps "nochecksum") }}
         - name: {{ $name }}
           configMap:
-            name: {{ $fullName }}-{{ $name }}
+            name: {{ $configmapName }}
         {{- end }}
         {{- with .Values.extraVolumes }}
         {{- toYaml . | nindent 8 }}
-        {{- end }}
-        {{- if eq .Values.kind "DaemonSet" }}
-        {{- toYaml .Values.daemonSetVolumes | nindent 8 }}
         {{- end }}
       {{- end }}
       {{- with .Values.nodeSelector }}
@@ -305,4 +304,14 @@ spec:
       tolerations:
         {{- toYaml . | nindent 8 }}
       {{- end }}
+  {{- if eq .Values.kind "StatefulSet" }}
+  volumeClaimTemplates:
+  {{- range .Values.volumeClaimTemplates }}
+  - metadata:
+      name: {{ .name }}
+      labels:
+        {{- $selectorLabels | nindent 8 }}
+    spec:
+      {{- toYaml .spec | nindent 6 }}
+  {{- end }}
 {{- end }}

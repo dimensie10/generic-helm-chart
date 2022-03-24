@@ -44,6 +44,26 @@ Create a service name, use fullname as default if override not specified.
 {{- end -}}
 
 {{/*
+Create a (main) configmap name, use fullname as default if override not specified.
+*/}}
+{{- define "generic-helm-charts.configmapname" -}}
+{{- if .Values.configmapNameOverride -}}
+{{- .Values.configmapNameOverride | trunc 63 | trimSuffix "-" -}}
+{{- else -}}
+{{- if .Values.fullnameOverride -}}
+{{- .Values.fullnameOverride | trunc 63 | trimSuffix "-" -}}
+{{- else -}}
+{{- $name := default .Chart.Name .Values.nameOverride -}}
+{{- if contains $name .Release.Name -}}
+{{- .Release.Name | trunc 63 | trimSuffix "-" -}}
+{{- else -}}
+{{- printf "%s-%s" .Release.Name $name | trunc 63 | trimSuffix "-" -}}
+{{- end -}}
+{{- end -}}
+{{- end -}}
+{{- end -}}
+
+{{/*
 Create a container name, use fullname as default if override not specified.
 */}}
 {{- define "generic-helm-charts.containername" -}}
