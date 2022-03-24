@@ -103,11 +103,13 @@ hostAliases: []
 port: 80
 
 service:
+  enabled: true
   type: ClusterIP
-  port:
-    number: 80
-    name: http
-    protocol: TCP
+  ports:
+    - port: 80
+      name: http
+      # targetPort: 80 # defaults to .Values.port
+      protocol: TCP
 
 ingress:
   enabled: false
@@ -191,3 +193,21 @@ hostAliases: []
 volumeClaimTemplates: []
 
 persistentVolumeClaim: {}
+
+rbac:
+  clusterRole:
+    create: false
+    spec: {}
+    annotations: {}
+  clusterRoleBinding:
+    create: false
+    spec: {}
+    annotations: {}
+  role:
+    create: false
+    spec: {}
+    annotations: {}
+  roleBinding:
+    create: false
+    spec: {}
+    annotations: {}
