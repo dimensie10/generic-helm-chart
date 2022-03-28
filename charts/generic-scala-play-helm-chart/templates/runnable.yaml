@@ -255,7 +255,7 @@ spec:
             {{- range $filename, $details := (omit $files "nochecksum") }}
             - name: {{ $name }}
               mountPath: {{ $path }}/{{ $filename }}
-              subPath: {{ $path }}/{{ $filename }}
+              subPath: {{ $filename }}
             {{- end }}
             {{- else }}
             - name: {{ $name }}
