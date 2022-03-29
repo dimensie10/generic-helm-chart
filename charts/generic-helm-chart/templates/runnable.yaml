@@ -42,7 +42,7 @@ spec:
         {{- with (omit .Values.configmaps "nochecksum") }}
           {{- range $name, $entries := . }}
           {{- if not $entries.nochecksum }}
-          {{- range $path, $files := (omit $entries "nochecksum") }}
+          {{- range $path, $files := (omit $entries "nochecksum" "labels") }}
           {{- if not $files.nochecksum }}
           {{- range $filename, $details := (omit $files "nochecksum") }}
           {{- if not $details.nochecksum }}
@@ -57,7 +57,7 @@ spec:
         {{- with (omit .Values.extraConfigmaps "nochecksum") }}
           {{- range $name, $entries := . }}
           {{- if not $entries.nochecksum }}
-          {{- range $filename, $details := (omit $entries "nochecksum") }}
+          {{- range $filename, $details := (omit $entries "nochecksum" "fullnameOverride" "labels") }}
           {{- if not $details.nochecksum }}
           {{ $name }}:{{ $filename }}={{ $details.contents | sha256sum | trunc 63 }}
           {{- end }}
@@ -222,8 +222,8 @@ spec:
           {{- if (or .Values.configmaps .Values.extraVolumeMounts) }}
           volumeMounts:
             {{- range $name, $entries := (omit .Values.configmaps "nochecksum") }}
-            {{- range $path, $files := (omit $entries "nochecksum") }}
-            {{- if (gt (len (keys (omit $entries "nochecksum"))) 1) }}
+            {{- range $path, $files := (omit $entries "nochecksum" "labels") }}
+            {{- if (gt (len (keys (omit $entries "nochecksum" "labels"))) 1) }}
             {{- range $filename, $details := (omit $files "nochecksum") }}
             - name: {{ $name }}
               mountPath: {{ $path }}/{{ $filename }}
