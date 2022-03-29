@@ -10,8 +10,11 @@ metadata:
   name: {{ $configmapName }}
   labels:
     {{- $labels | nindent 4 }}
+    {{- if $entries.labels }}
+    {{- toYaml $entries.labels | nindent 4 }}
+    {{- end }}
 data:
-{{- range $path, $files := (omit $entries "nochecksum") }}
+{{- range $path, $files := (omit $entries "nochecksum" "labels") }}
 {{- range $filename, $details := (omit $files "nochecksum") }}
   {{ $filename }}: |-
     {{- $details.contents | nindent 4 }}
@@ -25,9 +28,14 @@ data:
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: {{ $configmapName }}-{{ $name }}
+  name: {{ if $entries.fullnameOverride }}{{ $entries.fullnameOverride }}{{ else }}{{ $configmapName }}-{{ $name }}{{ end }}
+  labels:
+    {{- $labels | nindent 4 }}
+    {{- if $entries.labels }}
+    {{- toYaml $entries.labels | nindent 4 }}
+    {{- end }}
 data:
-{{- range $filename, $details := (omit $entries "nochecksum") }}
+{{- range $filename, $details := (omit $entries "nochecksum" "fullnameOverride" "labels") }}
   {{ $filename }}: |-
     {{- $details.contents | nindent 4 }}
 {{- end }}
