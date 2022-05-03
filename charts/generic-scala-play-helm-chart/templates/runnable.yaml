@@ -165,10 +165,18 @@ spec:
             {{- end }}
             - "-Dhttp.port={{ .Values.port }}"
             {{- if .Values.java.resources.xmx }}
+            {{- if .Values.java.resourcesWithJFlag }}
             - "-J-Xmx{{ .Values.java.resources.xmx | default "256m" }}"
+            {{- else }}
+            - "-Xmx{{ .Values.java.resources.xmx | default "256m" }}"
+            {{- end }}
             {{- end }}
             {{- if .Values.java.resources.xms }}
+            {{- if .Values.java.resourcesWithJFlag }}
             - "-J-Xms{{ .Values.java.resources.xms | default "256m" }}"
+            {{- else }}
+            - "-Xms{{ .Values.java.resources.xms | default "256m" }}"
+            {{- end }}
             {{- end }}
             {{- if .Values.java.jdwp.enabled }}
             - "-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address={{ .Values.java.jdwp.port }}"
