@@ -94,6 +94,16 @@ entries:
   generic-scala-play-helm-chart:
   - apiVersion: v2
     appVersion: 1.0.0
+    created: "2022-05-03T12:54:53.571654848Z"
+    description: A generic Helm chart for running Scala Play applications on Kubernetes
+    digest: 4f56fbba0bdfb2b9cb9d20a9380772cd0cba28192c82888a2e05c893de081408
+    name: generic-scala-play-helm-chart
+    type: application
+    urls:
+    - https://github.com/dimensie10/generic-helm-chart/releases/download/generic-scala-play-helm-chart-2.1.0/generic-scala-play-helm-chart-2.1.0.tgz
+    version: 2.1.0
+  - apiVersion: v2
+    appVersion: 1.0.0
     created: "2022-03-28T08:49:18.149227445Z"
     description: A generic Helm chart for running Scala Play applications on Kubernetes
     digest: 8b3ebe023721e2862a38cc834b7c1c82d47e97144b3bbea93acbfe141a23fd87
