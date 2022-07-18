@@ -1,8 +1,8 @@
 {{- $kubeVersion := .Capabilities.KubeVersion.GitVersion }}
-{{- if .Values.ingress.enabled -}}
 {{- $fullName := include "generic-helm-charts.fullname" . -}}
 {{- $svcName := include "generic-helm-charts.servicename" . -}}
 {{- $svcPort := (first .Values.service.ports).port -}}
+{{- if .Values.ingress.enabled -}}
 {{- if semverCompare ">=1.19-0" $kubeVersion -}}
 apiVersion: networking.k8s.io/v1
 {{- else if semverCompare ">=1.14-0" $kubeVersion -}}
@@ -58,9 +58,10 @@ spec:
               {{- end }}
           {{- end }}
     {{- end }}
+{{- end }}
+{{- if .Values.ingress.proxy.enabled }}
 ---
-{{- if .Values.ingress.proxy.enabled -}}
-{{- if semverCompare ">=1.19-0" $kubeVersion -}}
+{{ if semverCompare ">=1.19-0" $kubeVersion -}}
 apiVersion: networking.k8s.io/v1
 {{- else if semverCompare ">=1.14-0" $kubeVersion -}}
 apiVersion: networking.k8s.io/v1beta1
@@ -116,9 +117,9 @@ spec:
           {{- end }}
     {{- end }}
 {{- end }}
+{{- range .Values.extraIngress }}
 ---
-{{- range .Values.extraIngress -}}
-{{- if semverCompare ">=1.19-0" $kubeVersion -}}
+{{ if semverCompare ">=1.19-0" $kubeVersion -}}
 apiVersion: networking.k8s.io/v1
 {{- else if semverCompare ">=1.14-0" $kubeVersion -}}
 apiVersion: networking.k8s.io/v1beta1
@@ -129,7 +130,7 @@ kind: Ingress
 metadata:
   name: {{ $fullName }}-{{ .name }}
   labels:
-    {{- include "generic-helm-charts.labels" . | nindent 4 }}
+    {{- include "generic-helm-charts.labels" $ | nindent 4 }}
   {{- with .annotations }}
   annotations:
     {{- toYaml . | nindent 4 }}
@@ -173,6 +174,4 @@ spec:
               {{- end }}
           {{- end }}
     {{- end }}
-{{- end }}
----
 {{- end }}
