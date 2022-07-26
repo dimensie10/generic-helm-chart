@@ -253,7 +253,7 @@ spec:
         {{- range $name, $files := (omit .Values.configmaps "nochecksum") }}
         - name: {{ $name }}
           configMap:
-            name: {{ $configmapName }}
+            name: {{ $configmapName }}-{{ $name }}
         {{- end }}
         {{- with .Values.extraVolumes }}
         {{- toYaml . | nindent 8 }}

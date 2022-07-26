@@ -7,7 +7,7 @@
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: {{ $configmapName }}
+  name: {{ $configmapName }}-{{ $name }}
   labels:
     {{- $labels | nindent 4 }}
     {{- if $entries.labels }}
